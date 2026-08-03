@@ -1,8 +1,14 @@
 /// <reference types="astro/client" />
 /// <reference path="../.astro/types.d.ts" />
 
-declare module '*.svelte' {
-	import type { SvelteComponent } from 'svelte';
-	const component: typeof SvelteComponent<Record<string, unknown>>;
-	export default component;
+declare global {
+	namespace astroHTML.JSX {
+		interface IntrinsicAttributes {
+			'client:only'?: string;
+			'client:load'?: string;
+			'client:idle'?: string;
+			'client:visible'?: string;
+			'client:media'?: string;
+		}
+	}
 }
