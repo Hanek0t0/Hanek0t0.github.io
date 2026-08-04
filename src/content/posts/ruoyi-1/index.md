@@ -4,7 +4,7 @@ published: 2026-08-04
 description: 若依最近新爆出来的一个新day，利用难度较低。
 tags: [通用系统, nday, SQL注入, 代码审计]
 category: CVE复现
-draft: true
+draft: false
 ---
 
 # 漏洞描述
