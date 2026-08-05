@@ -15,6 +15,10 @@ RuoYi是RuoYi团队开源的一款后台管理系统。 RuoYi 4.8.2版本存在�
 
 源码：https://github.com/yangzongzhuan/RuoYi/archive/refs/tags/v4.8.2.zip
 
+------
+
+
+
 # 源码分析
 
 漏洞点在于 GenTableMapper.xml 文件的第168行-170行中，使用了 ${} 占位符，在Mybatis中该占位符走的是一个字符串直接拼接，而非预编译，Mybatis框架的sql注入也通常是因为这个占位符而产生。
@@ -106,4 +110,68 @@ genTableService.createTable(createTableStatement.toString())语句中，createTa
     }
 ```
 
- SqlUtil.filterKeyword()方法对我们的sql语句进行了一次过滤，我们具体分析他的过滤逻辑。
+ SqlUtil.filterKeyword()方法对我们的sql语句进行了一次检验，我们具体分析他的检验逻辑。
+
+ SQL_REGEX 是一个用 | 分隔常用 SQL 关键字的字符串常量，StringUtils.split 以 | 为分隔符将其拆成 String 数组。随后调用调用增强for循环遍历该数组，如果我们传入的sql语句中包含了SQL_REGEX数组中的关键字，那么就会直接抛出异常。
+
+但这个检验逻辑存在缺陷。SQL_REGEX 按 | 拆分后的关键词如 select  尾部带了空格，但是在SQL中换行符（0x0A）同样视为空白符，因此把 select 1中的空格替换为换行符后，发过去的实际 payload 是：SELECT(换行)1，就能绕过一些关键字的检测。
+
+```java showLineNumbers startLineNumber=13 title="SqlUtil.java"
+    /**
+     * 定义常用的 sql关键字
+     */
+    public static String SQL_REGEX = "\u000B|and |extractvalue|updatexml|sleep|information_schema|exec |insert |select |delete |update |drop |count |chr |mid |master |truncate |char |declare |or |union |like |+|/*|user()";
+```
+
+```java showLineNumbers startLineNumber=52 title="SqlUtil.java"
+    /**
+     * SQL关键字检查
+     */
+    public static void filterKeyword(String value)
+    {
+        if (StringUtils.isEmpty(value))
+        {
+            return;
+        }
+        String[] sqlKeywords = StringUtils.split(SQL_REGEX, "\\|");
+        for (String sqlKeyword : sqlKeywords)
+        {
+            if (StringUtils.indexOfIgnoreCase(value, sqlKeyword) > -1)
+            {
+                throw new UtilException("参数存在SQL注入风险");
+            }
+        }
+    }
+```
+
+------
+
+
+
+# 漏洞复现
+
+在本地部署启动ruoyi(具体教学请参考官网)，这边以调试模式启动，配合IDEA进行动态分析。
+
+```cmd
+java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -jar ruoyi-admin\target\ruoyi-admin.jar
+```
+
+![img3.png](img3.png)
+
+该接口只有admin角色才能访问，我们先在前台登录，使用ruoyi的默认账号admin/admin123 ,拿到admin的session。
+
+![](img4.png)
+
+构造payload，由于无回显只得以使用盲注，经测试布尔盲注无明显区别，故使用时间盲注，由于sleep在黑命单内且无法绕过，这边使用benchmark函数进行替代。select后紧接的是换行符，发包明显延时4秒。
+
+![](img5.png)
+
+在create方法设下断点，可以观察到我们构造sql参数的select后有换行符，而filterKeyword只能检测到select(空格)这种形式，因此得以绕过。
+
+![](img6.png)
+
+不过要注意的是，该payload会在数据库中创建一个表，比如上述payload就在数据库创建了test1表，此时如果继续使用相同的payload会发现没有延时了，这是因为创建的表在数据库中已经在数据库中存在，必须更换表名才能正常延时。
+
+如图下所示，在使用自动化脚本爆破时创建了许多无用的表，会直接影响到业务正常运作。因此需谨慎使用。
+
+![](img7.png)
