@@ -1,9 +1,9 @@
 ---
 title: RuoYi-4.8.2后台Sql注入(CVE-2026-38812)
 published: 2026-08-04
-description: 若依最近新爆出来的一个新day，利用难度较低。
-tags: [通用系统, nday, SQL注入, 代码审计]
-category: CVE复现
+description: 对之前修复的一个bypass版本
+tags: [ruoyi,通用系统, nday, SQL注入, 代码审计]
+category: 漏洞复现
 draft: false
 ---
 
@@ -11,7 +11,7 @@ draft: false
 
 RuoYi是RuoYi团队开源的一款后台管理系统。 RuoYi 4.8.2版本存在安全漏洞，该漏洞源于代码生成模块中的/tool/gen/createTable端点存在SQL注入，可能导致经过身份验证的管理员权限攻击者访问敏感数据库信息。
 
-影响版本：RuoYi v4.8.2
+影响版本：RuoYi < v4.8.2
 
 源码：https://github.com/yangzongzhuan/RuoYi/archive/refs/tags/v4.8.2.zip
 
