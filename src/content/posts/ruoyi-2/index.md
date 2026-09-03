@@ -4,7 +4,7 @@ published: 2026-08-06
 description: 对之前修复的一个bypass
 tags: [ruoyi,通用系统, nday, SQL注入, 代码审计]
 category: 漏洞复现
-draft: false
+draft: true
 ---
 
 # 简述
