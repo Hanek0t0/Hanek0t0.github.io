@@ -14,8 +14,8 @@
 
 
 > ### 友情链接
-> - [Hundredsu]([Hundredsu'Blog](https://hundredsu.github.io/))
+> - [Hundredsu'Blog](https://hundredsu.github.io/)
 >
-> - [Expl0rer.Ct]([Expl0rer.Ct](https://expl0rer.top/)) 
+> - [Expl0rer.Ct](https://expl0rer.top/) 
 >
 >   
