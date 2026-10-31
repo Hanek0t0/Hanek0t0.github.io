@@ -27,7 +27,7 @@ Mysql驱动版本：5.1.19
 
 ## 1. autoDeserialize
 
-autoDeserialize 是 **Connector/J (mysql官方驱动)** 的**连接属性**，默认为false，且我们可以在JDBC连接串里手动开启它。
+`autoDeserialize` 是 **Connector/J (mysql官方驱动)** 的**连接属性**，默认为false，且我们可以在JDBC连接串里手动开启它。
 
 ```
 jdbc:mysql://127.0.0.1:3306/test&autoDeserialize=true
@@ -57,13 +57,13 @@ jdbc:mysql://127.0.0.1:3306/test?statementInterceptors=org.example.MyInterceptor
 
 ## ServerStatusDiffInterceptor
 
-ServerStatusDiffInterceptor是mysql驱动里的一个类，实现了StatementInterceptor接口，并实现了其中的 `preProcess` 方法。
+`ServerStatusDiffInterceptor`是mysql驱动里提供的一个类，实现了`StatementInterceptor`接口，并实现了其中的 `preProcess` 方法。
 
 ```java showLineNumbers startLineNumber=38 title="ServerStatusDiffInterceptor.java"
 public class ServerStatusDiffInterceptor implements StatementInterceptor {
 ```
 
-我们重点讲解 `preProcess` 方法。有一个if分支，connection.versionMeetsMinimum(5, 0, 2)表示mysql服务器的版本是否大于5.0.2，如果是则进入分支，执行populateMapWithSessionStatusValues方法。
+我们重点讲解 `preProcess` 方法。有一个if分支，connection.versionMeetsMinimum(5, 0, 2)表示mysql服务器的版本是否大于5.0.2，如果是则进入分支，执行`populateMapWithSessionStatusValues`方法。
 
 ```java showLineNumbers startLineNumber=88 title="ServerStatusDiffInterceptor.java"
 	public ResultSetInternalMethods preProcess(String sql,
@@ -79,7 +79,7 @@ public class ServerStatusDiffInterceptor implements StatementInterceptor {
 	}
 ```
 
-接下来进入到populateMapWithSessionStatusValues方法。执行了 **SHOW SESSION STATUS** SQL语句，随后将结果集rs传给Util.resultSetToMap方法。
+接下来进入到`populateMapWithSessionStatusValues`方法。执行了 **SHOW SESSION STATUS** SQL语句，随后将结果集rs传给`Util.resultSetToMap`方法。
 
 ```java showLineNumbers startLineNumber=38 title="ServerStatusDiffInterceptor.java"
 			rs = stmt.executeQuery("SHOW SESSION STATUS");
