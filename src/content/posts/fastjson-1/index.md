@@ -4,7 +4,7 @@ published: 2026-08-20
 description: 最近比较热乎的一个漏洞，但没有想象中那么通用？
 tags: [fastjson,框架漏洞, nday, 反序列化, 代码审计]
 category: 漏洞复现
-draft: false
+draft: true
 ---
 
 
